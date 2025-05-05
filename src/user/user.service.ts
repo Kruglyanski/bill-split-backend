@@ -23,4 +23,17 @@ export class UserService {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find();
+  }
+
+  async findAllWithPagination(
+    skip: number = 0,
+    take: number = 10,
+  ): Promise<[User[], number]> {
+    return this.userRepository.findAndCount({
+      skip,
+      take,
+    });
+  }
 }
