@@ -1,4 +1,11 @@
-import { Body, Controller, Post, UseGuards, Request, Get } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Get,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupService } from './group.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -10,11 +17,14 @@ export class GroupController {
 
   @Post()
   create(@Body() dto: CreateGroupDto, @Request() req) {
-    return this.groupService.create(dto.name, [...dto.userIds, req.user.userId]);
+    return this.groupService.create(dto.name, [
+      ...dto.userIds,
+      req.user.userId,
+    ]);
   }
 
   @Get()
-  getGroups(@Request() req) {
+  getUserGroups(@Request() req) {
     return this.groupService.findAllForUser(req.user.userId);
   }
 }

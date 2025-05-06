@@ -27,13 +27,18 @@ export class ExpenseService {
     });
     if (!group) throw new NotFoundException('Group not found');
 
-    const paidBy = await this.userRepo.findOne({ where: { id: dto.paidByUserId } });
+    const paidBy = await this.userRepo.findOne({
+      where: { id: dto.paidByUserId },
+    });
     if (!paidBy) throw new NotFoundException('Payer user not found');
 
     const splits = await Promise.all(
       dto.splits.map(async (split) => {
-        const user = await this.userRepo.findOne({ where: { id: split.userId } });
-        if (!user) throw new NotFoundException(`User ${split.userId} not found`);
+        const user = await this.userRepo.findOne({
+          where: { id: split.userId },
+        });
+        if (!user)
+          throw new NotFoundException(`User ${split.userId} not found`);
         const s = new ExpenseSplit();
         s.user = user;
         s.amount = split.amount;
@@ -55,7 +60,7 @@ export class ExpenseService {
   async getGroupExpenses(groupId: number) {
     return this.expenseRepo.find({
       where: { group: { id: groupId } },
-      relations: ['splits', 'splits.user', 'paidBy'],
+      relations: ['group', 'splits', 'splits.user', 'paidBy'],
     });
   }
 
@@ -64,72 +69,74 @@ export class ExpenseService {
       where: { group: { id: groupId } },
       relations: ['splits', 'splits.user', 'paidBy'],
     });
-  
-    const balances: Record<number, { userId: number; paid: number; owed: number }> = {};
-  
+
+    const balances: Record<
+      number,
+      { userId: number; paid: number; owed: number }
+    > = {};
+
     for (const expense of expenses) {
       const payerId = expense.paidBy.id;
-  
+
       if (!balances[payerId]) {
         balances[payerId] = { userId: payerId, paid: 0, owed: 0 };
       }
       balances[payerId].paid += expense.amount;
-  
+
       for (const split of expense.splits) {
         const uid = split.user.id;
-  
+
         if (!balances[uid]) {
           balances[uid] = { userId: uid, paid: 0, owed: 0 };
         }
-  
+
         balances[uid].owed += split.amount;
       }
     }
-  
+
     return Object.values(balances).map((b) => ({
       ...b,
       balance: b.paid - b.owed,
     }));
   }
-  
+
   async calculateSettlements(groupId: number) {
     const balances = await this.getBalances(groupId);
-  
+
     const debtors = balances
       .filter((b) => b.balance < 0)
       .map((b) => ({ userId: b.userId, amount: -b.balance }))
       .sort((a, b) => a.amount - b.amount);
-  
+
     const creditors = balances
       .filter((b) => b.balance > 0)
       .map((b) => ({ userId: b.userId, amount: b.balance }))
       .sort((a, b) => b.amount - a.amount);
-  
+
     const settlements: { from: number; to: number; amount: number }[] = [];
-  
+
     let i = 0;
     let j = 0;
-  
+
     while (i < debtors.length && j < creditors.length) {
       const debtor = debtors[i];
       const creditor = creditors[j];
-  
+
       const minAmount = Math.min(debtor.amount, creditor.amount);
-  
+
       settlements.push({
         from: debtor.userId,
         to: creditor.userId,
         amount: Math.round(minAmount),
       });
-  
+
       debtor.amount -= minAmount;
       creditor.amount -= minAmount;
-  
+
       if (debtor.amount === 0) i++;
       if (creditor.amount === 0) j++;
     }
-  
+
     return settlements;
   }
-  
 }

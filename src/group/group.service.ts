@@ -15,7 +15,8 @@ export class GroupService {
 
   async create(name: string, userIds: number[]) {
     const users = await this.userRepo.findByIds(userIds);
-    if (users.length !== userIds.length) throw new NotFoundException('One or more users not found');
+    if (users.length !== userIds.length)
+      throw new NotFoundException('One or more users not found');
     const group = this.groupRepo.create({ name, members: users });
     return this.groupRepo.save(group);
   }
@@ -23,7 +24,8 @@ export class GroupService {
   async findAllForUser(userId: number) {
     return this.groupRepo
       .createQueryBuilder('group')
-      .leftJoinAndSelect('group.members', 'user')
+      .leftJoinAndSelect('group.members', 'members')
+      .leftJoin('group.members', 'user')
       .where('user.id = :userId', { userId })
       .getMany();
   }
