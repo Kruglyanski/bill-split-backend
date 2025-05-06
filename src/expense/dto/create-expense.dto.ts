@@ -1,7 +1,21 @@
-import { IsNotEmpty, IsNumber, IsInt, IsString, ValidateNested, ArrayMinSize } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsInt,
+  IsString,
+  ValidateNested,
+  ArrayMinSize,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class SplitDto {
+  @IsInt()
+  userId: number;
+
+  @IsNumber()
+  amount: number;
+}
+class PaidByUsersDto {
   @IsInt()
   userId: number;
 
@@ -20,8 +34,13 @@ export class CreateExpenseDto {
   @IsInt()
   groupId: number;
 
-  @IsInt()
-  paidByUserId: number;
+  // @IsInt()
+  // paidByUserId: number;
+
+  @ValidateNested({ each: true })
+  @ArrayMinSize(1)
+  @Type(() => PaidByUsersDto)
+  paidByUsers: PaidByUsersDto[];
 
   @ValidateNested({ each: true })
   @ArrayMinSize(1)

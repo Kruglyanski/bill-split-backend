@@ -6,6 +6,7 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { Group } from '../group/group.entity';
 import { User } from '../user/user.entity';
 import { ExpenseSplit } from './expense-split.entity';
+import { ExpensePayer } from './expense-payer.entity';
 
 @Injectable()
 export class ExpenseService {
@@ -27,11 +28,6 @@ export class ExpenseService {
     });
     if (!group) throw new NotFoundException('Group not found');
 
-    const paidBy = await this.userRepo.findOne({
-      where: { id: dto.paidByUserId },
-    });
-    if (!paidBy) throw new NotFoundException('Payer user not found');
-
     const splits = await Promise.all(
       dto.splits.map(async (split) => {
         const user = await this.userRepo.findOne({
@@ -46,11 +42,26 @@ export class ExpenseService {
       }),
     );
 
+    const payers = await Promise.all(
+      dto.paidByUsers.map(async (payer) => {
+        const user = await this.userRepo.findOne({
+          where: { id: payer.userId },
+        });
+        if (!user)
+          throw new NotFoundException(`Payer ${payer.userId} not found`);
+
+        const p = new ExpensePayer();
+        p.user = user;
+        p.amount = payer.amount;
+        return p;
+      }),
+    );
+
     const expense = this.expenseRepo.create({
       description: dto.description,
       amount: dto.amount,
       group,
-      paidBy,
+      paidBy: payers,
       splits,
     });
 
@@ -76,12 +87,13 @@ export class ExpenseService {
     > = {};
 
     for (const expense of expenses) {
-      const payerId = expense.paidBy.id;
-
-      if (!balances[payerId]) {
-        balances[payerId] = { userId: payerId, paid: 0, owed: 0 };
+      for (const payer of expense.paidBy) {
+        const payerId = payer.user.id;
+        if (!balances[payerId]) {
+          balances[payerId] = { userId: payerId, paid: 0, owed: 0 };
+        }
+        balances[payerId].paid += payer.amount;
       }
-      balances[payerId].paid += expense.amount;
 
       for (const split of expense.splits) {
         const uid = split.user.id;

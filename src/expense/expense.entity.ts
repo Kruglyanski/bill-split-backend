@@ -1,7 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { Group } from '../group/group.entity';
-import { User } from '../user/user.entity';
 import { ExpenseSplit } from './expense-split.entity';
+import { ExpensePayer } from './expense-payer.entity';
 
 @Entity()
 export class Expense {
@@ -14,12 +20,11 @@ export class Expense {
   @Column('float')
   amount: number;
 
-  @ManyToOne(() => Group, group => group.expenses)
+  @ManyToOne(() => Group, (group) => group.expenses)
   group: Group;
-
-  @ManyToOne(() => User)
-  paidBy: User;
-
-  @OneToMany(() => ExpenseSplit, split => split.expense, { cascade: true })
+  @OneToMany(() => ExpenseSplit, (split) => split.expense, { cascade: true })
   splits: ExpenseSplit[];
+
+  @OneToMany(() => ExpensePayer, (payer) => payer.expense, { cascade: true })
+  paidBy: ExpensePayer[];
 }
