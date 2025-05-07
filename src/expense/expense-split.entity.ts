@@ -7,7 +7,7 @@ export class ExpenseSplit {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Expense, expense => expense.splits)
+  @ManyToOne(() => Expense, (expense) => expense.splits)
   expense: Expense;
 
   @ManyToOne(() => User)
@@ -15,4 +15,7 @@ export class ExpenseSplit {
 
   @Column('float')
   amount: number;
+
+  @Column()
+  userId: number;
 }

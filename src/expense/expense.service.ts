@@ -53,6 +53,7 @@ export class ExpenseService {
         const p = new ExpensePayer();
         p.user = user;
         p.amount = payer.amount;
+        console.log(p);
         return p;
       }),
     );
@@ -71,7 +72,7 @@ export class ExpenseService {
   async getGroupExpenses(groupId: number) {
     return this.expenseRepo.find({
       where: { group: { id: groupId } },
-      relations: ['group', 'splits', 'splits.user', 'paidBy'],
+      relations: ['group', 'splits', 'paidBy'],
     });
   }
 

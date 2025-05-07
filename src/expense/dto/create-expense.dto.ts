@@ -15,6 +15,7 @@ class SplitDto {
   @IsNumber()
   amount: number;
 }
+
 class PaidByUsersDto {
   @IsInt()
   userId: number;
@@ -33,9 +34,6 @@ export class CreateExpenseDto {
 
   @IsInt()
   groupId: number;
-
-  // @IsInt()
-  // paidByUserId: number;
 
   @ValidateNested({ each: true })
   @ArrayMinSize(1)

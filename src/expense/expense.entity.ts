@@ -22,6 +22,7 @@ export class Expense {
 
   @ManyToOne(() => Group, (group) => group.expenses)
   group: Group;
+  
   @OneToMany(() => ExpenseSplit, (split) => split.expense, { cascade: true })
   splits: ExpenseSplit[];
 
