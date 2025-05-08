@@ -129,6 +129,26 @@ export class ExpenseService {
     return res;
   }
 
+  async delete(id: number) {
+    const expense = await this.expenseRepo.findOne({
+      where: { id },
+      relations: ['splits', 'paidBy'],
+    });
+  
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+  
+    // Удаляем связанные записи
+    await this.splitRepo.delete({ expense: { id } });
+    await this.payerRepo.delete({ expense: { id } });
+  
+    // Удаляем сам расход
+    await this.expenseRepo.delete(id);
+  
+    return { message: 'Expense deleted successfully' };
+  }
+  
   async getGroupExpenses(groupId: number) {
     return this.expenseRepo.find({
       where: { group: { id: groupId } },

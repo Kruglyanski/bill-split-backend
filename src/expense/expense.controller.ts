@@ -8,6 +8,7 @@ import {
   Query,
   Put,
   Param,
+  Delete,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ExpenseService } from './expense.service';
@@ -42,5 +43,10 @@ export class ExpenseController {
   @Put(':id')
   updateExpense(@Param('id') id: number, @Body() dto: UpdateExpenseDto) {
     return this.expenseService.update(id, dto);
+  }
+
+  @Delete(':id')
+  deleteExpense(@Param('id') id: number) {
+    return this.expenseService.delete(id);
   }
 }
