@@ -6,10 +6,13 @@ import {
   Request,
   Get,
   Query,
+  Put,
+  Param,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ExpenseService } from './expense.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 
 @Controller('expenses')
 @UseGuards(JwtAuthGuard)
@@ -34,5 +37,10 @@ export class ExpenseController {
   @Get('settlements')
   getGroupSettlements(@Query('groupId') groupId: number) {
     return this.expenseService.calculateSettlements(groupId);
+  }
+
+  @Put(':id')
+  updateExpense(@Param('id') id: number, @Body() dto: UpdateExpenseDto) {
+    return this.expenseService.update(id, dto);
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Expense } from './expense.entity';
 import { Repository } from 'typeorm';
@@ -7,6 +11,7 @@ import { Group } from '../group/group.entity';
 import { User } from '../user/user.entity';
 import { ExpenseSplit } from './expense-split.entity';
 import { ExpensePayer } from './expense-payer.entity';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 
 @Injectable()
 export class ExpenseService {
@@ -19,6 +24,8 @@ export class ExpenseService {
     private userRepo: Repository<User>,
     @InjectRepository(ExpenseSplit)
     private splitRepo: Repository<ExpenseSplit>,
+    @InjectRepository(ExpensePayer)
+    private payerRepo: Repository<ExpensePayer>,
   ) {}
 
   async create(dto: CreateExpenseDto) {
@@ -67,6 +74,59 @@ export class ExpenseService {
     });
 
     return this.expenseRepo.save(expense);
+  }
+
+  async update(id: number, dto: UpdateExpenseDto) {
+    const expense = await this.expenseRepo.findOne({
+      where: { id },
+      relations: ['splits', 'paidBy'],
+    });
+
+    if (!expense) throw new NotFoundException('Expense not found');
+
+    // Проверяем сумму долей
+    const totalSplit = dto.splits.reduce((sum, s) => sum + s.amount, 0);
+
+    if (Math.abs(totalSplit - dto.amount) > 0.01) {
+      throw new BadRequestException(
+        `Сумма долей (${totalSplit}) не совпадает с общей суммой (${dto.amount})`,
+      );
+    }
+
+    expense.description = dto.description;
+    expense.amount = dto.amount;
+
+    // Находим и назначаем группу
+    const group = await this.groupRepo.findOneBy({ id: dto.groupId });
+    if (!group) throw new NotFoundException('Group not found');
+    expense.group = group;
+
+    // Обновляем splits
+    await this.splitRepo.delete({ expense: { id } });
+    expense.splits = dto.splits.map((split) => {
+      const newSplit = new ExpenseSplit();
+      newSplit.user = { id: split.userId } as any;
+      newSplit.amount = split.amount;
+      return newSplit;
+    });
+
+    // Обновляем paidBy
+    await this.payerRepo.delete({ expense: { id } });
+    expense.paidBy = dto.paidBy.map((payer) => {
+      const newPayer = new ExpensePayer();
+      newPayer.user = { id: payer.userId } as any; //TODO
+      newPayer.amount = payer.amount;
+      return newPayer;
+    });
+
+    await this.expenseRepo.save(expense);
+
+    const res = await this.expenseRepo.findOne({
+      where: { id },
+      relations: ['group', 'splits', 'splits.user', 'paidBy', 'paidBy.user'],
+    });
+
+    return res;
   }
 
   async getGroupExpenses(groupId: number) {
