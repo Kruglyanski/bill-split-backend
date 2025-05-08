@@ -12,6 +12,7 @@ import { User } from '../user/user.entity';
 import { ExpenseSplit } from './expense-split.entity';
 import { ExpensePayer } from './expense-payer.entity';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { ExpenseHistoryService } from './expense-hystory.serviсe';
 
 @Injectable()
 export class ExpenseService {
@@ -26,9 +27,10 @@ export class ExpenseService {
     private splitRepo: Repository<ExpenseSplit>,
     @InjectRepository(ExpensePayer)
     private payerRepo: Repository<ExpensePayer>,
+    private expenseHistoryService: ExpenseHistoryService,
   ) {}
 
-  async create(dto: CreateExpenseDto) {
+  async create(dto: CreateExpenseDto, currentUserId: User['id']) {
     const group = await this.groupRepo.findOne({
       where: { id: dto.groupId },
       relations: ['members'],
@@ -73,14 +75,46 @@ export class ExpenseService {
       splits,
     });
 
-    return this.expenseRepo.save(expense);
-  }
+    const savedExpense = await this.expenseRepo.save(expense);
+    const currentUser = await this.userRepo.findOne({
+      where: { id: currentUserId },
+    });
 
-  async update(id: number, dto: UpdateExpenseDto) {
+    if (currentUser) {
+      await this.expenseHistoryService.logExpenseAction({
+        expense: savedExpense,
+        user: currentUser,
+        action: 'created',
+        previousData: {
+          description: expense.description,
+          amount: expense.amount,
+          groupId: expense.group.id,
+          paidBy: expense.paidBy,
+          splits: expense.splits,
+        },
+      });
+    }
+
+    return savedExpense;
+  }
+  //TODO: разобраться с лишней хренью
+  async update(id: number, dto: UpdateExpenseDto, currentUserId: User['id']) {
     const expense = await this.expenseRepo.findOne({
       where: { id },
-      relations: ['splits', 'paidBy'],
+      relations: ['splits', 'paidBy', 'group'],
     });
+
+    let previousExpenseData: any = null;
+
+    if (expense) {
+      previousExpenseData = {
+        description: expense.description,
+        amount: expense.amount,
+        groupId: expense.group.id,
+        paidBy: expense.paidBy,
+        splits: expense.splits,
+      };
+    }
 
     if (!expense) throw new NotFoundException('Expense not found');
 
@@ -119,36 +153,73 @@ export class ExpenseService {
       return newPayer;
     });
 
-    await this.expenseRepo.save(expense);
+    const savedExpense = await this.expenseRepo.save(expense);
 
     const res = await this.expenseRepo.findOne({
       where: { id },
       relations: ['group', 'splits', 'splits.user', 'paidBy', 'paidBy.user'],
     });
 
+    const currentUser = await this.userRepo.findOne({
+      where: { id: currentUserId },
+    });
+
+    if (currentUser) {
+      await this.expenseHistoryService.logExpenseAction({
+        expense: savedExpense,
+        user: currentUser,
+        action: 'updated',
+        previousData: previousExpenseData,
+        newData: {
+          description: savedExpense.description,
+          amount: savedExpense.amount,
+          groupId: savedExpense.group.id,
+          paidBy: savedExpense.paidBy,
+          splits: savedExpense.splits,
+        },
+      });
+    }
+
     return res;
   }
 
-  async delete(id: number) {
+  async delete(id: number, currentUserId: User['id']) {
     const expense = await this.expenseRepo.findOne({
       where: { id },
       relations: ['splits', 'paidBy'],
     });
-  
+
     if (!expense) {
       throw new NotFoundException('Expense not found');
     }
-  
+
     // Удаляем связанные записи
     await this.splitRepo.delete({ expense: { id } });
     await this.payerRepo.delete({ expense: { id } });
-  
+
     // Удаляем сам расход
     await this.expenseRepo.delete(id);
-  
+    const currentUser = await this.userRepo.findOne({
+      where: { id: currentUserId },
+    });
+
+    if (currentUser) {
+      await this.expenseHistoryService.logExpenseAction({
+        expense,
+        user: currentUser,
+        action: 'deleted',
+        previousData: {
+          description: expense.description,
+          amount: expense.amount,
+          groupId: expense.group.id,
+          paidBy: expense.paidBy,
+          splits: expense.splits,
+        },
+      });
+    }
     return { message: 'Expense deleted successfully' };
   }
-  
+
   async getGroupExpenses(groupId: number) {
     return this.expenseRepo.find({
       where: { group: { id: groupId } },

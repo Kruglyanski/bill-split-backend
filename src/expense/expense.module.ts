@@ -7,6 +7,8 @@ import { ExpenseController } from './expense.controller';
 import { Group } from '../group/group.entity';
 import { User } from '../user/user.entity';
 import { ExpensePayer } from './expense-payer.entity';
+import { ExpenseHistoryService } from './expense-hystory.serviсe';
+import { ExpenseHistory } from './expense-hystory.entity';
 
 @Module({
   imports: [
@@ -16,9 +18,11 @@ import { ExpensePayer } from './expense-payer.entity';
       Group,
       User,
       ExpensePayer,
+      ExpenseHistory,
     ]),
   ],
-  providers: [ExpenseService],
+  providers: [ExpenseService, ExpenseHistoryService],
   controllers: [ExpenseController],
+  exports: [ExpenseHistoryService],
 })
 export class ExpenseModule {}
