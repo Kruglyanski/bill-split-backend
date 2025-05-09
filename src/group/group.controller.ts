@@ -5,6 +5,7 @@ import {
   UseGuards,
   Request,
   Get,
+  Param,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupService } from './group.service';
@@ -23,5 +24,10 @@ export class GroupController {
   @Get()
   getUserGroups(@Request() req) {
     return this.groupService.findAllForUser(req.user.userId);
+  }
+
+  @Get(':id/debts')
+  getGroupDebts(@Param('id') groupId: number, @Request() req) {
+    return this.groupService.calculateGroupDebts(+groupId, req.user.userId);
   }
 }
