@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Expense } from './expense.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { Group } from '../group/group.entity';
 import { User } from '../user/user.entity';
@@ -97,6 +97,25 @@ export class ExpenseService {
 
     return savedExpense;
   }
+
+  async getExpensesByUserId(userId: number) {
+    const groups = await this.groupRepo
+      .createQueryBuilder('group')
+      .leftJoin('group.members', 'member')
+      .where('member.id = :userId', { userId })
+      .getMany();
+
+    const groupIds = groups.map((g) => g.id);
+
+    if (!groupIds.length) return [];
+
+    return this.expenseRepo.find({
+      where: { group: { id: In(groupIds) } },
+      relations: ['group', 'splits', 'paidBy'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   //TODO: разобраться с лишней хренью
   async update(id: number, dto: UpdateExpenseDto, currentUserId: User['id']) {
     const expense = await this.expenseRepo.findOne({

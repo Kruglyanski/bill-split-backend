@@ -29,6 +29,11 @@ export class ExpenseController {
     return this.expenseService.create(dto, req.user.userId);
   }
 
+  @Get('/user')
+  getExpensesByUserId(@Request() req) {
+    return this.expenseService.getExpensesByUserId(req.user.userId);
+  }
+
   @Get()
   getGroupExpenses(@Query('groupId') groupId: number) {
     return this.expenseService.getGroupExpenses(groupId);
