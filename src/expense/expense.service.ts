@@ -205,19 +205,13 @@ export class ExpenseService {
   async delete(id: number, currentUserId: User['id']) {
     const expense = await this.expenseRepo.findOne({
       where: { id },
-      relations: ['splits', 'paidBy'],
+      relations: ['splits', 'paidBy', 'group'],
     });
 
     if (!expense) {
       throw new NotFoundException('Expense not found');
     }
 
-    // Удаляем связанные записи
-    await this.splitRepo.delete({ expense: { id } });
-    await this.payerRepo.delete({ expense: { id } });
-
-    // Удаляем сам расход
-    await this.expenseRepo.delete(id);
     const currentUser = await this.userRepo.findOne({
       where: { id: currentUserId },
     });
@@ -236,6 +230,12 @@ export class ExpenseService {
         },
       });
     }
+
+    await this.splitRepo.delete({ expense: { id } });
+    await this.payerRepo.delete({ expense: { id } });
+
+    await this.expenseRepo.delete(id);
+
     return { message: 'Expense deleted successfully' };
   }
 
