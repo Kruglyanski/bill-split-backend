@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany, CreateDateColumn } from 'typeorm';
 import { User } from '../user/user.entity';
 import { Expense } from '../expense/expense.entity';
 
@@ -16,4 +16,7 @@ export class Group {
 
   @OneToMany(() => Expense, expense => expense.group)
   expenses: Expense[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 }
