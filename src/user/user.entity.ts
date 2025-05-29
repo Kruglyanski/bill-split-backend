@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  CreateDateColumn,
+} from 'typeorm';
+import { Group } from '../group/group.entity';
 
 @Entity()
 export class User {
@@ -13,4 +20,16 @@ export class User {
 
   @Column()
   name: string;
+
+  @Column({ nullable: true, unique: true })
+  googleId?: string;
+
+  @Column({ default: true })
+  registered: boolean;
+
+  @ManyToMany(() => Group, (group) => group.members)
+  groups: Group[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

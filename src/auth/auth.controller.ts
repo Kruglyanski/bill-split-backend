@@ -7,7 +7,6 @@ export class AuthController {
 
   @Post('register')
   register(@Body() userDto: any) {
-    console.log('REGISTER')
     return this.authService.register(userDto);
   }
 
@@ -15,5 +14,10 @@ export class AuthController {
   async login(@Body() body) {
     const user = await this.authService.validateUser(body.email, body.password);
     return this.authService.login(user);
+  }
+
+  @Post('google')
+  async googleLogin(@Body('idToken') idToken: string) {
+    return this.authService.googleLogin(idToken);
   }
 }

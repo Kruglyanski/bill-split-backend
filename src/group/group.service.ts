@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Group } from './group.entity';
 import { Repository } from 'typeorm';
@@ -7,6 +11,7 @@ import {
   GroupDebtResultDto,
   GroupDebtTransactionDto,
 } from './dto/group-debt-result.dto';
+import { CreateGroupDto } from './dto/create-group.dto';
 
 @Injectable()
 export class GroupService {
@@ -17,11 +22,45 @@ export class GroupService {
     private userRepo: Repository<User>,
   ) {}
 
-  async create(name: string, userIds: number[]) {
+  async createGroup({ name, userIds, extraUsers }: CreateGroupDto) {
     const users = await this.userRepo.findByIds(userIds);
-    if (users.length !== userIds.length)
+    if (users.length !== userIds.length) {
       throw new NotFoundException('One or more users not found');
-    const group = this.groupRepo.create({ name, members: users });
+    }
+
+    const createdExtraUsers: User[] = [];
+    for (const extraUser of extraUsers) {
+      const existingUser = await this.userRepo.findOne({
+        where: { email: extraUser.email },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException(
+          `Пользователь с email ${extraUser.email} уже зарегистрирован`,
+        );
+      }
+
+      const newUser = this.userRepo.create({
+        name: extraUser.name,
+        email: extraUser.email,
+        registered: false,
+        password: '',
+      });
+
+      await this.userRepo.save(newUser);
+
+      createdExtraUsers.push(newUser);
+
+      // TODO: отправить приглашение по email (если требуется)
+    }
+
+    const allUsers = [...users, ...createdExtraUsers];
+
+    const group = this.groupRepo.create({
+      name,
+      members: allUsers,
+    });
+
     return this.groupRepo.save(group);
   }
 

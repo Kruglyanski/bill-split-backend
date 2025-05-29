@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  JoinTable,
+  OneToMany,
+  CreateDateColumn,
+} from 'typeorm';
 import { User } from '../user/user.entity';
 import { Expense } from '../expense/expense.entity';
 
@@ -10,11 +18,11 @@ export class Group {
   @Column()
   name: string;
 
-  @ManyToMany(() => User, { eager: true })
+  @ManyToMany(() => User, (user) => user.groups, { eager: true }) // <-- один eager можно оставить
   @JoinTable()
   members: User[];
 
-  @OneToMany(() => Expense, expense => expense.group)
+  @OneToMany(() => Expense, (expense) => expense.group)
   expenses: Expense[];
 
   @CreateDateColumn()
