@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -8,6 +9,8 @@ import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
+import { LoginDto, RegisterDto } from './dto/login.dto';
+import { MailService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +20,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {
     this.googleClient = new OAuth2Client();
     const rawIds = this.configService.get<string>('GOOGLE_CLIENT_IDS') || '';
@@ -29,23 +33,55 @@ export class AuthService {
       const { password, ...result } = user;
       return result;
     }
+
     throw new UnauthorizedException('Invalid credentials');
   }
 
-  async login(userData: any) {
-    const payload = { email: userData.email, sub: userData.id };
-    const user = await this.userService.findByEmail(userData.email);
+  async login(userData: LoginDto) {
+    const user = await this.validateUser(userData.email, userData.password);
+    const payload = { email: user.email, sub: user.id };
+
     return {
       token: this.jwtService.sign(payload),
       user,
     };
   }
 
-  async register(userDto: any) {
+  async register(userDto: RegisterDto) {
     const existingUser = await this.userService.findByEmail(userDto.email);
-    if (existingUser) {
-      console.log('Email already exists');
-      throw new ConflictException('Email already exists');
+
+    const mailToken = this.jwtService.sign(
+      {
+        email: userDto.email,
+        sub: existingUser ? existingUser.id : undefined,
+      },
+      {
+        expiresIn: '1d',
+      },
+    );
+
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 1);
+
+    if (existingUser && existingUser.isEmailConfirmed) {
+      throw new ConflictException('Email already in use');
+    }
+
+    if (existingUser && !existingUser.isEmailConfirmed) {
+      existingUser.emailConfirmationToken = mailToken;
+      existingUser.emailConfirmationTokenExpires = expires;
+      existingUser.password = await bcrypt.hash(userDto.password, 10);
+      await this.userService.update(existingUser.id, existingUser);
+
+      await this.mailService.sendEmailConfirmation(
+        existingUser.email,
+        mailToken,
+      );
+
+      return {
+        message:
+          'Account already exists but not confirmed. We re-sent the confirmation email.',
+      };
     }
 
     const hashedPassword = await bcrypt.hash(userDto.password, 10);
@@ -53,14 +89,44 @@ export class AuthService {
     const user = await this.userService.create({
       ...userDto,
       password: hashedPassword,
+      emailConfirmationToken: mailToken,
+      emailConfirmationTokenExpires: expires,
+      isEmailConfirmed: false,
     });
 
-    const payload = { email: user.email, sub: user.id };
-    const token = this.jwtService.sign(payload);
+    await this.mailService.sendEmailConfirmation(user.email, mailToken);
 
+    return { message: 'User registered successfully' };
+  }
+
+  async confirmEmail(token: string) {
+    const payload = this.jwtService.verify(token);
+
+    const user = await this.userService.findByEmail(payload.email);
+
+    if (
+      !user ||
+      user.emailConfirmationToken !== token ||
+      (user.emailConfirmationTokenExpires !== null &&
+        user.emailConfirmationTokenExpires < new Date())
+    ) {
+      throw new BadRequestException('Invalid or expired confirmation token');
+    }
+
+    const updPayload = {
+      isEmailConfirmed: true,
+      emailConfirmationToken: null,
+      emailConfirmationTokenExpires: null,
+    };
+
+    await this.userService.update(user.id, updPayload);
+
+    const newToken = this.jwtService.sign({ email: user.email, sub: user.id });
+    console.log('newToken', newToken);
     return {
+      message: 'Email confirmed successfully',
+      token: newToken,
       user,
-      token,
     };
   }
 

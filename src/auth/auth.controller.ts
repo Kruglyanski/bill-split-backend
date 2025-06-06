@@ -1,4 +1,11 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  Get,
+  Query,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -12,12 +19,21 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    return this.authService.login(user);
+    return this.authService.login(body);
   }
 
   @Post('google')
   async googleLogin(@Body('idToken') idToken: string) {
     return this.authService.googleLogin(idToken);
+  }
+
+  @Get('confirm')
+  async confirmEmail(@Query('token') mailToken: string) {
+    console.log('confirmEmail', mailToken);
+    if (!mailToken) {
+      throw new BadRequestException('Email token is required');
+    }
+
+    return await this.authService.confirmEmail(mailToken);
   }
 }

@@ -26,6 +26,10 @@ export class UserService {
     return this.userRepo.findOne({ where: { id } });
   }
 
+  async findByConfirmationToken(token: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { emailConfirmationToken: token } });
+  }
+
   async findAll(): Promise<User[]> {
     return this.userRepo.find();
   }

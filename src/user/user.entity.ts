@@ -32,4 +32,13 @@ export class User {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ default: false })
+  isEmailConfirmed: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  emailConfirmationToken: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailConfirmationTokenExpires: Date | null;
 }

@@ -45,7 +45,8 @@ export class UserController {
     if (!email) {
       throw new NotFoundException('Email parameter is required');
     }
+    const user = await this.userService.findByEmail(email);
 
-    return await this.userService.findByEmail(email);
+    return user;
   }
 }
