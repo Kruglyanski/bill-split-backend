@@ -5,12 +5,13 @@ import { UserModule } from './user/user.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GroupModule } from './group/group.module';
 import { ExpenseModule } from './expense/expense.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'env/.env', 
+      envFilePath: '.env', 
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -30,6 +31,7 @@ import { ExpenseModule } from './expense/expense.module';
     UserModule,
     GroupModule,
     ExpenseModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
