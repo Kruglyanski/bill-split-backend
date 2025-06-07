@@ -7,13 +7,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  register(@Body() userDto: any) {
+  register(@Body() userDto: RegisterDto) {
     return this.authService.register(userDto);
   }
 
