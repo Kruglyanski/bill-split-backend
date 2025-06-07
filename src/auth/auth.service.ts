@@ -72,11 +72,15 @@ export class AuthService {
       existingUser.emailConfirmationTokenExpires = expires;
       existingUser.password = await bcrypt.hash(userDto.password, 10);
       await this.userService.update(existingUser.id, existingUser);
-
-      await this.mailService.sendEmailConfirmation(
-        existingUser.email,
-        mailToken,
-      );
+      try {
+        await this.mailService.sendEmailConfirmation(
+          existingUser.email,
+          mailToken,
+        );
+        console.log('sendEmailConfirmation success');
+      } catch (error) {
+        console.log('sendEmailConfirmation error', error);
+      }
 
       return {
         message:
@@ -93,9 +97,12 @@ export class AuthService {
       emailConfirmationTokenExpires: expires,
       isEmailConfirmed: false,
     });
-
-    await this.mailService.sendEmailConfirmation(user.email, mailToken);
-
+    try {
+      await this.mailService.sendEmailConfirmation(user.email, mailToken);
+      console.log('sendEmailConfirmation success');
+    } catch (error) {
+      console.log('sendEmailConfirmation error', error);
+    }
     return { message: 'User registered successfully' };
   }
 
