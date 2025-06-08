@@ -39,23 +39,21 @@ export class UserService {
       where: { id: userId },
       relations: ['groups'],
     });
-
     if (!user) throw new NotFoundException('User not found');
 
     const groupIds = user.groups.map((g) => g.id);
-    if (groupIds.length === 0) {
-      console.log('User has no groups');
-      return [];
+
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .distinct(true)
+      .leftJoin('user.groups', 'group')
+      .where('user.id = :userId', { userId });
+
+    if (groupIds.length) {
+      qb.orWhere('group.id IN (:...groupIds)', { groupIds });
     }
 
-    const users = this.userRepo
-      .createQueryBuilder('user')
-      .innerJoin('user.groups', 'group')
-      .where('group.id IN (:...groupIds)', { groupIds })
-      .orderBy('user.createdAt', 'DESC')
-      .getMany();
-
-    return users;
+    return qb.orderBy('user.createdAt', 'DESC').getMany();
   }
 
   async findAllWithPagination(
