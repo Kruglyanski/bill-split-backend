@@ -5,9 +5,12 @@ import {
   BadRequestException,
   Get,
   Query,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/login.dto';
+import { JwtRtGuard } from './jwt-rt.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -30,11 +33,24 @@ export class AuthController {
 
   @Get('confirm')
   async confirmEmail(@Query('token') mailToken: string) {
-    console.log('confirmEmail', mailToken);
     if (!mailToken) {
       throw new BadRequestException('Email token is required');
     }
 
     return await this.authService.confirmEmail(mailToken);
+  }
+
+  @Post('refresh')
+  @UseGuards(JwtRtGuard)
+  refreshTokens(@Req() req) {
+    const userId = req.user.sub;
+    const rt = req.user.refreshToken;
+    return this.authService.refreshTokens(userId, rt);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtRtGuard)
+  logout(@Req() req) {
+    return this.authService.logout(req.user.sub);
   }
 }

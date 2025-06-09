@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -37,12 +38,52 @@ export class AuthService {
     throw new UnauthorizedException('Invalid credentials');
   }
 
-  async login(userData: LoginDto) {
-    const user = await this.validateUser(userData.email, userData.password);
-    const payload = { email: user.email, sub: user.id };
+  async getTokens(userId: number, email: string) {
+    console.log('JWT', this.configService.get('JWT_EXPIRES_IN'));
+    const [at, rt] = await Promise.all([
+      this.jwtService.signAsync(
+        { sub: userId, email },
+        {
+          secret: this.configService.get('JWT_SECRET'),
+          expiresIn: this.configService.get('JWT_EXPIRES_IN') || '15m',
+        },
+      ),
+      this.jwtService.signAsync(
+        { sub: userId, email },
+        {
+          secret: this.configService.get('JWT_RT_SECRET'),
+          expiresIn: this.configService.get('JWT_RT_EXPIRES_IN') || '7d',
+        },
+      ),
+    ]);
+    return { accessToken: at, refreshToken: rt };
+  }
+
+  async updateRefreshTokenHash(userId: number, rt: string) {
+    const hash = await bcrypt.hash(rt, 10);
+    await this.userService.update(userId, { hashedRt: hash });
+  }
+
+  async refreshTokens(userId: number, rt: string) {
+    const user = await this.userService.findById(userId);
+    if (!user || !user.hashedRt) throw new ForbiddenException();
+
+    const rtMatches = await bcrypt.compare(rt, user.hashedRt);
+    if (!rtMatches) throw new ForbiddenException('Invalid refresh token');
+
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+    return tokens;
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.validateUser(dto.email, dto.password);
+
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
 
     return {
-      token: this.jwtService.sign(payload),
+      tokens,
       user,
     };
   }
@@ -106,18 +147,20 @@ export class AuthService {
     return { message: 'User registered successfully' };
   }
 
-  async confirmEmail(token: string) {
-    const payload = this.jwtService.verify(token);
+  async confirmEmail(emailToken: string) {
+    const payload = this.jwtService.verify(emailToken);
 
     const user = await this.userService.findByEmail(payload.email);
 
     if (
       !user ||
-      user.emailConfirmationToken !== token ||
+      user.emailConfirmationToken !== emailToken ||
       (user.emailConfirmationTokenExpires !== null &&
         user.emailConfirmationTokenExpires < new Date())
     ) {
-      throw new BadRequestException('Invalid or expired confirmation token');
+      throw new BadRequestException(
+        'Invalid or expired confirmation emailToken',
+      );
     }
 
     const updPayload = {
@@ -128,11 +171,13 @@ export class AuthService {
 
     await this.userService.update(user.id, updPayload);
 
-    const newToken = this.jwtService.sign({ email: user.email, sub: user.id });
-    console.log('newToken', newToken);
+    const tokens = await this.getTokens(user.id, user.email);
+
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+
     return {
       message: 'Email confirmed successfully',
-      token: newToken,
+      tokens,
       user,
     };
   }
@@ -165,11 +210,18 @@ export class AuthService {
     }
 
     if (user) {
-      const token = this.jwtService.sign({ email: user.email, sub: user.id });
+      const tokens = await this.getTokens(user.id, user.email);
+
+      await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+
       return {
         user,
-        token,
+        tokens,
       };
     }
+  }
+
+  async logout(userId: number) {
+    await this.userService.update(userId, { hashedRt: null });
   }
 }
