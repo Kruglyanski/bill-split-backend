@@ -6,10 +6,12 @@ import {
   Request,
   Get,
   Param,
+  Put,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupService } from './group.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
@@ -19,6 +21,14 @@ export class GroupController {
   @Post()
   createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupService.createGroup(createGroupDto);
+  }
+
+  @Put(':id')
+  async updateGroup(
+    @Param('id') id: number,
+    @Body() updateGroupDto: UpdateGroupDto,
+  ) {
+    return this.groupService.updateGroup(id, updateGroupDto);
   }
 
   @Get()

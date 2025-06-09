@@ -12,6 +12,7 @@ import {
   GroupDebtTransactionDto,
 } from './dto/group-debt-result.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 
 @Injectable()
 export class GroupService {
@@ -62,6 +63,59 @@ export class GroupService {
     });
 
     return this.groupRepo.save(group);
+  }
+
+  async updateGroup(id: number, dto: UpdateGroupDto) {
+    const group = await this.groupRepo.findOne({
+      where: { id },
+      relations: ['members'],
+    });
+    if (!group) {
+      throw new NotFoundException('Группа не найдена');
+    }
+
+    const users = await this.userRepo.findByIds(dto.userIds);
+    if (users.length !== dto.userIds.length) {
+      throw new NotFoundException(
+        'Один или несколько пользователей не найдены',
+      );
+    }
+
+    const createdExtraUsers: User[] = [];
+    for (const extraUser of dto.extraUsers) {
+      const existingUser = await this.userRepo.findOne({
+        where: { email: extraUser.email },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException(
+          `Пользователь с email ${extraUser.email} уже зарегистрирован`,
+        );
+      }
+
+      const newUser = this.userRepo.create({
+        name: extraUser.name,
+        email: extraUser.email,
+        registered: false,
+        password: '',
+      });
+
+      await this.userRepo.save(newUser);
+      createdExtraUsers.push(newUser);
+
+      // TODO: отправить приглашение по email (если надо)
+    }
+
+    group.name = dto.name;
+
+    group.members = [...users, ...createdExtraUsers];
+
+    await this.groupRepo.save(group);
+
+    return this.groupRepo.findOne({
+      where: { id },
+      relations: ['members'],
+    });
   }
 
   async findAllForUser(userId: number) {
