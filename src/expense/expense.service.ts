@@ -13,6 +13,8 @@ import { ExpenseSplit } from './expense-split.entity';
 import { ExpensePayer } from './expense-payer.entity';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpenseHistoryService } from './expense-hystory.serviсe';
+import { AppGateway } from '../gateway/app.gateway';
+import { WS_EVENTS } from '../gateway/events';
 
 @Injectable()
 export class ExpenseService {
@@ -28,6 +30,7 @@ export class ExpenseService {
     @InjectRepository(ExpensePayer)
     private payerRepo: Repository<ExpensePayer>,
     private expenseHistoryService: ExpenseHistoryService,
+    private appGateway: AppGateway,
   ) {}
 
   async create(dto: CreateExpenseDto, currentUserId: User['id']) {
@@ -94,6 +97,10 @@ export class ExpenseService {
         },
       });
     }
+
+    this.appGateway.broadcastToGroup(group.id, WS_EVENTS.EXPENSE_CREATED, {
+      expense: savedExpense,
+    });
 
     return savedExpense;
   }

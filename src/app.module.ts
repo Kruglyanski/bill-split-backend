@@ -6,12 +6,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GroupModule } from './group/group.module';
 import { ExpenseModule } from './expense/expense.module';
 import { HealthModule } from './health/health.module';
+import { AppGatewayModule } from './gateway/app-gateway.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env', 
+      envFilePath: '.env',
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -25,13 +26,14 @@ import { HealthModule } from './health/health.module';
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
         synchronize: config.get<boolean>('DB_SYNC', true),
-      }), 
+      }),
     }),
     AuthModule,
     UserModule,
     GroupModule,
     ExpenseModule,
     HealthModule,
+    AppGatewayModule,
   ],
 })
 export class AppModule {}

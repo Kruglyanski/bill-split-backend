@@ -9,6 +9,7 @@ import { User } from '../user/user.entity';
 import { ExpensePayer } from './expense-payer.entity';
 import { ExpenseHistoryService } from './expense-hystory.serviсe';
 import { ExpenseHistory } from './expense-hystory.entity';
+import { AppGatewayModule } from '../gateway/app-gateway.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ExpenseHistory } from './expense-hystory.entity';
       ExpensePayer,
       ExpenseHistory,
     ]),
+    AppGatewayModule,
   ],
   providers: [ExpenseService, ExpenseHistoryService],
   controllers: [ExpenseController],

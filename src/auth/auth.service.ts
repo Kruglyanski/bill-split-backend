@@ -39,7 +39,6 @@ export class AuthService {
   }
 
   async getTokens(userId: number, email: string) {
-    console.log('JWT', this.configService.get('JWT_EXPIRES_IN'));
     const [at, rt] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, email },

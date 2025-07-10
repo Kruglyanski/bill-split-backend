@@ -15,6 +15,7 @@ import { RtStrategy } from './rt.strategy';
     MailModule,
     PassportModule,
     JwtModule.registerAsync({
+      global: true,
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({

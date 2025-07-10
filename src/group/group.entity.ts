@@ -18,7 +18,7 @@ export class Group {
   @Column()
   name: string;
 
-  @ManyToMany(() => User, (user) => user.groups, { eager: true }) // <-- один eager можно оставить
+  @ManyToMany(() => User, (user) => user.groups, { eager: true })
   @JoinTable()
   members: User[];
 

@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Group } from './group.entity';
@@ -13,6 +15,8 @@ import {
 } from './dto/group-debt-result.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { AppGateway } from '../gateway/app.gateway';
+import { WS_EVENTS } from '../gateway/events';
 
 @Injectable()
 export class GroupService {
@@ -21,6 +25,8 @@ export class GroupService {
     private groupRepo: Repository<Group>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @Inject(forwardRef(() => AppGateway))
+    private readonly gateway: AppGateway,
   ) {}
 
   async createGroup({ name, userIds, extraUsers }: CreateGroupDto) {
@@ -57,12 +63,18 @@ export class GroupService {
 
     const allUsers = [...users, ...createdExtraUsers];
 
-    const group = this.groupRepo.create({
+    const createdGroup = this.groupRepo.create({
       name,
       members: allUsers,
     });
 
-    return this.groupRepo.save(group);
+    const group = await this.groupRepo.save(createdGroup);
+
+    const membersIds = group.members.map((m) => m.id);
+    this.gateway.addUsersToGroupRoom(membersIds, group.id);
+    this.gateway.notifyUsers(membersIds, WS_EVENTS.GROUP_CREATED, { group });
+
+    return group;
   }
 
   async updateGroup(id: number, dto: UpdateGroupDto) {
@@ -70,6 +82,7 @@ export class GroupService {
       where: { id },
       relations: ['members'],
     });
+
     if (!group) {
       throw new NotFoundException('Группа не найдена');
     }
@@ -111,6 +124,11 @@ export class GroupService {
     group.members = [...users, ...createdExtraUsers];
 
     await this.groupRepo.save(group);
+
+    const membersIds = group.members.map((m) => m.id);
+
+    this.gateway.addUsersToGroupRoom(membersIds, group.id);
+    this.gateway.notifyUsers(membersIds, WS_EVENTS.ADDED_TO_GROUP, { group });
 
     return this.groupRepo.findOne({
       where: { id },
