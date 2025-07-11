@@ -42,6 +42,11 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   emailConfirmationTokenExpires: Date | null;
 
-  @Column({type: 'varchar', nullable: true })
-  hashedRt?: string | null;          
+  @Column({ type: 'varchar', nullable: true })
+  hashedRt?: string | null;
+
+  @Column({ type: 'jsonb', default: {} })
+  settings: {
+    language?: string;
+  };
 }

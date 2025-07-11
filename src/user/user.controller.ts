@@ -8,6 +8,7 @@ import {
   Post,
   Body,
   BadRequestException,
+  Patch,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
@@ -66,5 +67,22 @@ export class UserController {
     const user = await this.userService.createWithFakeEmail(name);
 
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('settings')
+  async updateSettings(@Request() req, @Body('settings') settings: any) {
+    const userId = req.user.userId;
+    console.log('asd req ', req);
+    const user = await this.userService.findById(userId);
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const updatedSettings = {
+      ...user.settings,
+      ...settings,
+    };
+
+    return this.userService.update(userId, { settings: updatedSettings });
   }
 }
