@@ -10,16 +10,16 @@ import {
   IsEmail,
 } from 'class-validator';
 
-class ExtraUserDto {
-  @IsString()
-  name: string;
+// class ExtraUserDto {
+//   @IsString()
+//   name: string;
 
-  @IsEmail()
-  email: string;
+//   @IsEmail()
+//   email: string;
 
-  @IsBoolean()
-  registered: boolean;
-}
+//   @IsBoolean()
+//   registered: boolean;
+// }
 
 export class CreateGroupDto {
   @IsString()
@@ -31,8 +31,8 @@ export class CreateGroupDto {
   @IsInt({ each: true })
   userIds: number[]; // Зарегистрированные пользователи
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ExtraUserDto)
-  extraUsers: ExtraUserDto[]; // Незарегистрированные пользователи
+  // @IsArray()
+  // @ValidateNested({ each: true })
+  // @Type(() => ExtraUserDto)
+  // extraUsers: ExtraUserDto[]; // Незарегистрированные пользователи
 }

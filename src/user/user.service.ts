@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
+import { randomUUID } from 'crypto';
 // import { Group } from '../group/group.entity';
 
 @Injectable()
@@ -15,6 +16,24 @@ export class UserService {
 
   async create(data: Partial<User>): Promise<User> {
     const user = this.userRepo.create(data);
+    return this.userRepo.save(user);
+  }
+
+  async createWithFakeEmail(name: string): Promise<User> {
+    const base = name.trim().toLowerCase().replace(/\s+/g, '_') || 'user';
+    let email = `${base}_${randomUUID().slice(0, 6)}@fake.local`;
+
+    while (await this.findByEmail(email)) {
+      email = `${base}_${randomUUID().slice(0, 6)}@fake.local`;
+    }
+
+    const user = this.userRepo.create({
+      name,
+      email,
+      registered: false,
+      password: '',
+    });
+
     return this.userRepo.save(user);
   }
 
@@ -52,6 +71,14 @@ export class UserService {
     if (groupIds.length) {
       qb.orWhere('group.id IN (:...groupIds)', { groupIds });
     }
+
+    qb.select([
+      'user.id',
+      'user.name',
+      'user.email',
+      'user.createdAt',
+      'user.registered',
+    ]);
 
     return qb.orderBy('user.createdAt', 'DESC').getMany();
   }

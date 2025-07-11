@@ -5,6 +5,9 @@ import {
   Request,
   Query,
   NotFoundException,
+  Post,
+  Body,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserService } from './user.service';
@@ -46,6 +49,21 @@ export class UserController {
       throw new NotFoundException('Email parameter is required');
     }
     const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+
+    return user;
+  }
+
+  @Post('fake')
+  async createFake(@Body('name') name: string) {
+    if (!name?.trim()) {
+      throw new BadRequestException('Name is required');
+    }
+
+    const user = await this.userService.createWithFakeEmail(name);
 
     return user;
   }

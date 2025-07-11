@@ -29,43 +29,44 @@ export class GroupService {
     private readonly gateway: AppGateway,
   ) {}
 
-  async createGroup({ name, userIds, extraUsers }: CreateGroupDto) {
-    const users = await this.userRepo.findByIds(userIds);
+  async createGroup({ name, userIds }: CreateGroupDto) {
+    const users = await this.userRepo.findByIds(userIds); //TODO: ref
+
     if (users.length !== userIds.length) {
       throw new NotFoundException('One or more users not found');
     }
 
-    const createdExtraUsers: User[] = [];
-    for (const extraUser of extraUsers) {
-      const existingUser = await this.userRepo.findOne({
-        where: { email: extraUser.email },
-      });
+    // const createdExtraUsers: User[] = [];
+    // for (const extraUser of extraUsers) {
+    //   const existingUser = await this.userRepo.findOne({
+    //     where: { email: extraUser.email },
+    //   });
 
-      if (existingUser) {
-        throw new BadRequestException(
-          `Пользователь с email ${extraUser.email} уже зарегистрирован`,
-        );
-      }
+    //   if (existingUser) {
+    //     throw new BadRequestException(
+    //       `Пользователь с email ${extraUser.email} уже зарегистрирован`,
+    //     );
+    //   }
 
-      const newUser = this.userRepo.create({
-        name: extraUser.name,
-        email: extraUser.email,
-        registered: false,
-        password: '',
-      });
+    //   const newUser = this.userRepo.create({
+    //     name: extraUser.name,
+    //     email: extraUser.email,
+    //     registered: false,
+    //     password: '',
+    //   });
 
-      await this.userRepo.save(newUser);
+    //   await this.userRepo.save(newUser);
 
-      createdExtraUsers.push(newUser);
+    //   createdExtraUsers.push(newUser);
 
-      // TODO: отправить приглашение по email (если требуется)
-    }
+    //   // TODO: отправить приглашение по email (если требуется)
+    // }
 
-    const allUsers = [...users, ...createdExtraUsers];
+    // const allUsers = [...users, ...createdExtraUsers];
 
     const createdGroup = this.groupRepo.create({
       name,
-      members: allUsers,
+      members: users,
     });
 
     const group = await this.groupRepo.save(createdGroup);
